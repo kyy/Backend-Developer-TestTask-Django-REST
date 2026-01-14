@@ -1,0 +1,6 @@
+django
+django-ninja
+django-redis
+celery
+psycopg2-binary
+redis
