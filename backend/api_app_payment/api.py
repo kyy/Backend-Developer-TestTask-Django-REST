@@ -1,24 +1,11 @@
-from ninja import Router, Query, Schema
-from ninja.pagination import paginate, PageNumberPagination
+from ninja import Router
 from django.shortcuts import get_object_or_404
-from typing import List, Optional, Dict, Any
-from django.db.models import Q
-from datetime import datetime, timedelta
-
-from pydantic import Field
-
+from typing import List
 from .models import Payout
-from .schemas import (
-    PayoutCreateSchema,
-    PayoutUpdateSchema,
-    PayoutResponseSchema,
-    PayoutListResponseSchema,
-    ErrorSchema,
-    StatusEnum
-)
-from .validators import PayoutValidator
+from .schemas import PayoutCreateSchema, PayoutUpdateSchema, PayoutResponseSchema
 
-router = Router(tags=["Управление заявками на выплату средств"])
+
+router = Router(tags=["payouts-interface"])
 
 
 @router.get("/", response=List[PayoutResponseSchema])
@@ -36,14 +23,7 @@ def get_payout(request, payout_id: str):
 @router.post("/", response=PayoutResponseSchema)
 def create_payout(request, payload: PayoutCreateSchema):
     """Создание заявки"""
-    payout = Payout.objects.create(
-        amount=payload.amount,
-        currency=payload.currency,
-        recipient_details=payload.recipient_details,
-        description=payload.description,
-        status='pending'
-    )
-    return payout
+    return Payout.objects.create(**payload.dict(), status='pending')
 
 
 @router.patch("/{payout_id}/", response=PayoutResponseSchema)

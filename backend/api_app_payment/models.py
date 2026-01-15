@@ -1,25 +1,25 @@
 from django.db import models
-from django.core.validators import MinValueValidator
-import uuid
+from uuid import uuid4
 
+
+class Status(models.TextChoices):
+    PENDING = 'pending', 'Ожидание'
+    PROCESSING = 'processing', 'В обработке'
+    COMPLETED = 'completed', 'Выплачено'
+    FAILED = 'failed', 'Ошибка'
+    CANCELLED = 'cancelled', 'Отменено'
+
+
+class Currency(models.TextChoices):
+    RUB = 'RUB', 'Российский рубль'
+    USD = 'USD', 'Доллар США'
+    EUR = 'EUR', 'Евро'
 
 class Payout(models.Model):
-    class Status(models.TextChoices):
-        PENDING = 'pending', 'Ожидание'
-        PROCESSING = 'processing', 'В обработке'
-        COMPLETED = 'completed', 'Выплачено'
-        FAILED = 'failed', 'Ошибка'
-        CANCELLED = 'cancelled', 'Отменено'
-
-    class Currency(models.TextChoices):
-        RUB = 'RUB', 'Российский рубль'
-        USD = 'USD', 'Доллар США'
-        EUR = 'EUR', 'Евро'
-        KZT = 'KZT', 'Казахстанский тенге'
 
     id = models.UUIDField(
         primary_key=True,
-        default=uuid.uuid4,
+        default=uuid4,
         editable=False,
         verbose_name='Идентификатор'
     )
@@ -27,7 +27,6 @@ class Payout(models.Model):
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(0.01)],
         verbose_name='Сумма выплаты'
     )
 

@@ -1,73 +1,77 @@
+from decimal import Decimal
 from ninja import Schema, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
-from enum import Enum
-
-
-# Enums для валидации
-class CurrencyEnum(str, Enum):
-    RUB = "RUB"
-    USD = "USD"
-    EUR = "EUR"
-    KZT = "KZT"
-
-
-class StatusEnum(str, Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-
-# Базовые схемы для валидации реквизитов
-class BankAccountSchema(Schema):
-    account_number: str = Field(..., min_length=10, max_length=34)
-    bank_name: str = Field(..., min_length=2, max_length=100)
-    bik: Optional[str] = Field(None, min_length=9, max_length=9)
-    correspondent_account: Optional[str] = Field(None, min_length=20, max_length=20)
+from pydantic import UUID4, field_validator
+from .models import Currency, Status
 
 
 class CardSchema(Schema):
-    card_number: str = Field(..., min_length=16, max_length=19)
-    card_holder: str = Field(..., min_length=2, max_length=100)
-    expiry_date: str = Field(..., pattern=r'^(0[1-9]|1[0-2])\/([0-9]{2})$')
+    card_number: str  = Field(
+        ...,
+        min_length=13,
+        max_length=19,
+        examples=[5555555555554444, 6011000990139424, 5892830000000000],
+        description="Номер карты",
+        pattern = r'^[0-9]{13,19}$',
+    )
+    card_holder: str = Field(
+        ...,
+        min_length=4,
+        max_length=100,
+        examples=["Ivanov Ivan"],
+        description="Держатель карты",
+        pattern=r'^[A-ZА-ЯЁ][a-zа-яё]+(-[A-ZА-ЯЁ][a-zа-яё]+)? [A-ZА-ЯЁ][a-zа-яё]+(-[A-ZА-ЯЁ][a-zа-яё]+)?$',
 
+    )
+    expiry_date: str = Field(
+        ...,
+        pattern=r'^(0[1-9]|1[0-2])\/([0-9]{2})$',
+        description="Срок действия в формате ММ/ГГ",
+        examples=["12/25"]
+    )
 
-class CryptoWalletSchema(Schema):
-    wallet_address: str = Field(..., min_length=26, max_length=64)
-    network: str = Field(..., min_length=2, max_length=20)
-    currency: str = Field(..., min_length=2, max_length=10)
+    @field_validator('card_number')
+    def validate_luhn_algorithm(cls, v):
+        """Проверка номера карты по алгоритму Луна"""
+        # Удаляем все нецифровые символы
+        digits = [int(d) for d in v if d.isdigit()]
 
+        if len(digits) < 13 or len(digits) > 19:
+            raise ValueError('Номер карты должен содержать от 13 до 19 цифр')
 
-# Схемы для API
-class PayoutBaseSchema(Schema):
-    amount: float = Field(..., gt=0, description="Сумма выплаты")
-    currency: CurrencyEnum = Field(CurrencyEnum.RUB, description="Валюта выплаты")
-    recipient_details: Dict[str, Any] = Field(..., description="Реквизиты получателя")
-    description: Optional[str] = Field(None, max_length=500, description="Описание")
+        # Алгоритм Луна
+        check_digit = digits.pop()
+        digits.reverse()
 
+        total = 0
+        for i, digit in enumerate(digits):
+            if i % 2 == 0:
+                digit *= 2
+                if digit > 9:
+                    digit -= 9
+            total += digit
 
-class PayoutCreateSchema(PayoutBaseSchema):
-    class Config:
-        schema_extra = {
-            "example": {
-                "amount": 1000.50,
-                "currency": "RUB",
-                "description": "Выплата за услуги",
-                "recipient_details": {
-                    "type": "bank_account",
-                    "account_number": "40702810500000012345",
-                    "bank_name": "Альфа-Банк",
-                    "bik": "044525593",
-                    "correspondent_account": "30101810200000000593"
-                }
-            }
-        }
+        total += check_digit
+
+        if total % 10 != 0:
+            raise ValueError('Неверный номер карты')
+
+        return v
+
+class PayoutCreateSchema(Schema):
+    amount: Decimal = Field(..., gt=0, decimal_places=2, max_digits=12 ,description="Сумма выплаты (должна быть больше 0)")
+    currency: Currency = Field(..., description="Валюта выплаты")
+    recipient_details: CardSchema = Field(...,)
+    description: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="Описание выплаты (максимум 500 символов)"
+    )
 
 
 class PayoutUpdateSchema(Schema):
-    status: Optional[StatusEnum] = Field(None, description="Статус заявки")
+    status: Optional[Status] = Field(None, description="Статус заявки")
     description: Optional[str] = Field(None, max_length=500, description="Описание")
 
     class Config:
@@ -80,11 +84,11 @@ class PayoutUpdateSchema(Schema):
 
 
 class PayoutResponseSchema(Schema):
-    id: str
-    amount: float
-    currency: str
-    recipient_details: Dict[str, Any]
-    status: str
+    id: UUID4
+    amount: Decimal
+    currency: Currency
+    recipient_details: CardSchema
+    status: Status
     description: Optional[str]
     created_at: datetime
     updated_at: datetime
