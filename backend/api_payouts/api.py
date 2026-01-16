@@ -1,9 +1,7 @@
 from ninja import Router
-from django.shortcuts import get_object_or_404
 from typing import List
-from .models import Payout
 from .schemas import PayoutCreateSchema, PayoutUpdateSchema, PayoutResponseSchema
-
+from .services.payout_service import PayoutService
 
 router = Router(tags=["payouts-interface"])
 
@@ -11,37 +9,28 @@ router = Router(tags=["payouts-interface"])
 @router.get("/", response=List[PayoutResponseSchema])
 def list_payouts(request):
     """Список всех заявок"""
-    return Payout.objects.all().order_by('-created_at')
+    return PayoutService.get_list_payouts()
 
 
 @router.get("/{payout_id}/", response=PayoutResponseSchema)
 def get_payout(request, payout_id: str):
     """Получение заявки по ID"""
-    return get_object_or_404(Payout, id=payout_id)
+    return PayoutService.get_payout(payout_id=payout_id)
 
 
 @router.post("/", response=PayoutResponseSchema)
 def create_payout(request, payload: PayoutCreateSchema):
     """Создание заявки"""
-    return Payout.objects.create(**payload.dict(), status='pending')
+    return PayoutService.create_payout(payload=payload)
 
 
 @router.patch("/{payout_id}/", response=PayoutResponseSchema)
 def update_payout(request, payout_id: str, payload: PayoutUpdateSchema):
     """Обновление заявки"""
-    payout = get_object_or_404(Payout, id=payout_id)
-
-    for attr, value in payload.dict(exclude_unset=True).items():
-        if hasattr(payout, attr):
-            setattr(payout, attr, value)
-
-    payout.save()
-    return payout
+    return PayoutService.update_payout(payout_id=payout_id, payload=payload)
 
 
 @router.delete("/{payout_id}/")
 def delete_payout(request, payout_id: str):
     """Удаление заявки"""
-    payout = get_object_or_404(Payout, id=payout_id)
-    payout.delete()
-    return {"success": True}
+    return PayoutService.delete_payout(payout_id=payout_id)

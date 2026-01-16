@@ -10,6 +10,8 @@ annotated-types==0.7.0
     # via pydantic
 asgiref==3.11.0
     # via django
+async-timeout==5.0.1
+    # via -r requirements.in
 billiard==4.2.4
     # via celery
 celery==5.6.2
