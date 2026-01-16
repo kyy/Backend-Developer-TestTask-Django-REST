@@ -59,6 +59,7 @@ class CardSchema(Schema):
 
         return v
 
+
 class PayoutCreateSchema(Schema):
     amount: Decimal = Field(..., gt=0, decimal_places=2, max_digits=12 ,description="Сумма выплаты (должна быть больше 0)")
     currency: Currency = Field(..., description="Валюта выплаты")
@@ -92,6 +93,7 @@ class PayoutResponseSchema(Schema):
     description: Optional[str]
     created_at: datetime
     updated_at: datetime
+
 
 
 class PayoutListResponseSchema(Schema):
