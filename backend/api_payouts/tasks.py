@@ -1,6 +1,6 @@
 from celery import shared_task
 import logging
-from api_payouts.services.payout_task_proccessing_service import PayoutProcessingService, ProcessingInProgress, StopProcessing
+from .celery_services.payout_task_proccessing_service import PayoutProcessingService, ProcessingInProgress, StopProcessing
 
 logger = logging.getLogger(__name__)
 
@@ -8,13 +8,13 @@ logger = logging.getLogger(__name__)
 @shared_task(
     bind=True,
     max_retries=3,
-    default_retry_delay=60,
-    autoretry_for=(Exception,),
+    default_retry_delay=30,
+    autoretry_for=(ConnectionError, TimeoutError),
     retry_backoff=True,
     ignore_result=False,
     acks_late=True,
 )
-def task_payout(self, payout_id):
+def payout_task(self, payout_id):
     """
     Асинхронная задача обработки выплаты
 

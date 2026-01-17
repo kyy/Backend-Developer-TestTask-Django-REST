@@ -24,7 +24,8 @@ def get_payout(request, payout_id: str):
 @router.post("/", response=PayoutResponseSchema)
 def create_payout(request, payload: PayoutCreateSchema):
     """Создание заявки"""
-    return PayoutService.create_payout(payload=payload)
+    payout = PayoutService.create_payout(payload=payload)
+    return PayoutService.execute_payout(payout.id)
 
 
 @router.patch("/{payout_id}/", response=PayoutResponseSchema)

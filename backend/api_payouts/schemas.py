@@ -1,10 +1,9 @@
 from decimal import Decimal
-from ninja import Schema, Field, ModelSchema
-from typing import Optional, Dict, Any, Union
+from ninja import Schema, Field
+from typing import Optional, Dict, Any
 from datetime import datetime
-from pydantic import UUID4, field_validator, computed_field, model_validator, BaseModel
-from .models import Currency, Status, Payout
-
+from pydantic import UUID4, BaseModel
+from .models import Currency, Status
 
 class CardSchema(Schema):
     card_number: str  = Field(
@@ -31,38 +30,9 @@ class CardSchema(Schema):
         examples=["12/25"]
     )
 
-    @field_validator('card_number')
-    def validate_luhn_algorithm(cls, v):
-        """Проверка номера карты по алгоритму Луна"""
-        # Удаляем все нецифровые символы
-        digits = [int(d) for d in v if d.isdigit()]
-
-        if len(digits) < 13 or len(digits) > 19:
-            raise ValueError('Номер карты должен содержать от 13 до 19 цифр')
-
-        # Алгоритм Луна
-        check_digit = digits.pop()
-        digits.reverse()
-
-        total = 0
-        for i, digit in enumerate(digits):
-            if i % 2 == 0:
-                digit *= 2
-                if digit > 9:
-                    digit -= 9
-            total += digit
-
-        total += check_digit
-
-        if total % 10 != 0:
-            raise ValueError('Неверный номер карты')
-
-        return v
-
 class PayoutTimestampMixin(BaseModel):
     created_at: datetime
     updated_at: datetime
-
 
 class PayoutIdentifierMixin(Schema):
     id: UUID4
@@ -78,7 +48,6 @@ class PayoutDetailsMixin(Schema):
     currency: Currency = Field(..., description="Валюта выплаты")
     recipient_details: CardSchema = Field(..., description="Данные получателя")
 
-
 class PayoutCreateSchema(
     PayoutDescriptionMixin,
     PayoutDetailsMixin
@@ -89,15 +58,7 @@ class PayoutUpdateSchema(
     PayoutStatusMixin,
     PayoutDescriptionMixin
 ):
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "status": "processing",
-                "description": "Обновленный комментарий"
-            }
-        }
-
+    pass
 
 class PayoutResponseSchema(
     PayoutTimestampMixin,
@@ -108,12 +69,10 @@ class PayoutResponseSchema(
 ):
     pass
 
-
 class ErrorSchema(Schema):
     detail: str
     code: Optional[str] = None
     field: Optional[str] = None
-
 
 class ValidationErrorSchema(Schema):
     detail: list[Dict[str, Any]]

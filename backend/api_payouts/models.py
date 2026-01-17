@@ -1,8 +1,11 @@
+import logging
+
 from django.db import models
 from uuid import uuid4
 
 from django.shortcuts import get_object_or_404
 
+logger = logging.getLogger(__name__)
 
 class Status(models.TextChoices):
     PENDING = 'pending', 'Ожидание'
@@ -11,12 +14,10 @@ class Status(models.TextChoices):
     FAILED = 'failed', 'Ошибка'
     CANCELLED = 'cancelled', 'Отменено'
 
-
 class Currency(models.TextChoices):
     RUB = 'RUB', 'Российский рубль'
     USD = 'USD', 'Доллар США'
     EUR = 'EUR', 'Евро'
-
 
 class PayoutQuerySet(models.QuerySet):
 
@@ -127,8 +128,13 @@ class Payout(models.Model):
         """Отметить как неудачную"""
         self.status = Status.FAILED
         if error_message:
-            self.description = error_message
+            self.description += f'\n {error_message}'
         self.save(update_fields=['status', 'description', 'updated_at'])
+
+    def mark_as_cancelled(self) -> None:
+        """Отметить как отмененную"""
+        self.status = Status.CANCELLED
+        self.save(update_fields=['status', 'updated_at'])
 
     def can_be_processed(self) -> bool:
         """Можно ли обрабатывать выплату"""
@@ -139,16 +145,20 @@ class Payout(models.Model):
         return self.status == Status.COMPLETED
 
     def is_processing(self) -> bool:
-        """Завершена ли выплата"""
+        """В процессе ли обработки"""
         return self.status == Status.PROCESSING
 
     def is_failed(self) -> bool:
-        """Завершена ли выплата"""
+        """В ошибке"""
         return self.status == Status.FAILED
 
     def is_pending(self) -> bool:
-        """Завершена ли выплата"""
+        """В ожидании ли обработки"""
         return self.status == Status.PENDING
+
+    def is_cancelled(self) -> bool:
+        """Отменена"""
+        return self.status == Status.CANCELLED
 
     def __str__(self):
         return f"Выплата {self.id} - {self.amount} {self.currency}"
