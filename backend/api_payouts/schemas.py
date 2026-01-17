@@ -1,9 +1,9 @@
 from decimal import Decimal
-from ninja import Schema, Field
-from typing import Optional, Dict, Any
+from ninja import Schema, Field, ModelSchema
+from typing import Optional, Dict, Any, Union
 from datetime import datetime
-from pydantic import UUID4, field_validator
-from .models import Currency, Status
+from pydantic import UUID4, field_validator, computed_field, model_validator, BaseModel
+from .models import Currency, Status, Payout
 
 
 class CardSchema(Schema):
@@ -59,21 +59,36 @@ class CardSchema(Schema):
 
         return v
 
+class PayoutTimestampMixin(BaseModel):
+    created_at: datetime
+    updated_at: datetime
 
-class PayoutCreateSchema(Schema):
+
+class PayoutIdentifierMixin(Schema):
+    id: UUID4
+
+class PayoutStatusMixin(Schema):
+    status: Optional[Status] = Field(None, description="Статус заявки")
+
+class PayoutDescriptionMixin(Schema):
+    description: Optional[str] = Field(None, max_length=500, description="Описание")
+
+class PayoutDetailsMixin(Schema):
     amount: Decimal = Field(..., gt=0, decimal_places=2, max_digits=12 ,description="Сумма выплаты (должна быть больше 0)")
     currency: Currency = Field(..., description="Валюта выплаты")
-    recipient_details: CardSchema = Field(...,)
-    description: Optional[str] = Field(
-        None,
-        max_length=500,
-        description="Описание выплаты (максимум 500 символов)"
-    )
+    recipient_details: CardSchema = Field(..., description="Данные получателя")
 
 
-class PayoutUpdateSchema(Schema):
-    status: Optional[Status] = Field(None, description="Статус заявки")
-    description: Optional[str] = Field(None, max_length=500, description="Описание")
+class PayoutCreateSchema(
+    PayoutDescriptionMixin,
+    PayoutDetailsMixin
+):
+    pass
+
+class PayoutUpdateSchema(
+    PayoutStatusMixin,
+    PayoutDescriptionMixin
+):
 
     class Config:
         schema_extra = {
@@ -84,23 +99,14 @@ class PayoutUpdateSchema(Schema):
         }
 
 
-class PayoutResponseSchema(Schema):
-    id: UUID4
-    amount: Decimal
-    currency: Currency
-    recipient_details: CardSchema
-    status: Status
-    description: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-
-
-
-class PayoutListResponseSchema(Schema):
-    items: list[PayoutResponseSchema]
-    count: int
-    page: Optional[int] = None
-    total_pages: Optional[int] = None
+class PayoutResponseSchema(
+    PayoutTimestampMixin,
+    PayoutStatusMixin,
+    PayoutDescriptionMixin,
+    PayoutIdentifierMixin,
+    PayoutDetailsMixin
+):
+    pass
 
 
 class ErrorSchema(Schema):

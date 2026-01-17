@@ -2,8 +2,6 @@ import logging
 from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
-from django.shortcuts import get_object_or_404
-
 
 from ..models import Payout
 
@@ -40,7 +38,7 @@ class PayoutProcessingService:
     def _setup(self):
         """Этап 1: Получение объекта выплаты"""
         logger.info(f"Начинаю обработку выплаты с ID: {self.payout_id}")
-        self.payout = get_object_or_404(Payout, id=self.payout_id)
+        self.payout = Payout.objects.get_payout(payout_id=self.payout_id)
 
         # Обновляем прогресс задачи если есть task
         if self.task:
@@ -51,12 +49,12 @@ class PayoutProcessingService:
 
     def _validate(self):
         """Этап 2: Валидация и проверка идемпотентности"""
-        if self.payout.status == 'completed':
+        if self.payout.is_completed():
             logger.info(f"Выплата {self.payout_id} уже выполнена ранее")
             self.result = {'already_completed': True}
             raise StopProcessing()
 
-        elif self.payout.status == 'processing':
+        elif self.payout.is_processing():
             self._check_stuck_processing()
 
         # Обновляем прогресс
@@ -72,7 +70,7 @@ class PayoutProcessingService:
             logger.warning(f"Выплата {self.payout_id} зависла в processing")
             # Сброс статуса для повторной обработки
             with transaction.atomic():
-                self.payout.status = 'pending'
+                self.payout.mark_as_pending()
                 self.payout.save(update_fields=['status', 'updated_at'])
         else:
             raise ProcessingInProgress()
@@ -80,7 +78,7 @@ class PayoutProcessingService:
     def _set_processing(self):
         """Этап 3: Установка статуса 'в обработке'"""
         with transaction.atomic():
-            self.payout.status = 'processing'
+            self.payout.mark_as_processing()
             self.payout.save(update_fields=['status', 'updated_at'])
         logger.info(f"Выплата {self.payout_id} переведена в статус 'processing'")
 
@@ -92,7 +90,7 @@ class PayoutProcessingService:
             )
 
     def _simulate_processing(self):
-        """Улучшенная имитация обработки"""
+        """Имитация обработки"""
         logger.info(f"Имитация обработки выплаты {self.payout_id}...")
 
         stages = [
@@ -121,7 +119,7 @@ class PayoutProcessingService:
         """Этап 5: Завершение обработки"""
         logger.info(f"Завершение обработки выплаты {self.payout_id}")
         with transaction.atomic():
-            self.payout.status = 'completed'
+            self.payout.mark_as_completed()
             self.payout.save(update_fields=['status', 'updated_at'])
         logger.info(f"Выплата {self.payout_id} успешно обработана")
 
@@ -170,13 +168,12 @@ class PayoutProcessingService:
         """Обновление статуса выплаты на 'failed'"""
         try:
             with transaction.atomic():
-                payout = Payout.objects.get(id=self.payout_id)
-                payout.status = 'failed'
-                if payout.description:
-                    payout.description += f'\nОшибка: {str(error)}'
+                self.payout.mark_as_failed()
+                if self.payout.description:
+                    self.payout.description += f'\nОшибка: {str(error)}'
                 else:
-                    payout.description = f'Ошибка: {str(error)}'
-                payout.save(update_fields=['status', 'description', 'updated_at'])
+                    self.payout.description = f'Ошибка: {str(error)}'
+                self.payout.save(update_fields=['status', 'description', 'updated_at'])
         except Exception as update_exc:
             logger.error(f"Не удалось обновить статус для {self.payout_id}: {str(update_exc)}")
 

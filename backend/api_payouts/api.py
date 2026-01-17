@@ -1,5 +1,7 @@
 from ninja import Router
 from typing import List
+from ninja.pagination import paginate, PageNumberPagination
+
 from .schemas import PayoutCreateSchema, PayoutUpdateSchema, PayoutResponseSchema
 from .services.payout_service import PayoutService
 
@@ -7,6 +9,7 @@ router = Router(tags=["payouts-interface"])
 
 
 @router.get("/", response=List[PayoutResponseSchema])
+@paginate(PageNumberPagination, page_size=10)
 def list_payouts(request):
     """Список всех заявок"""
     return PayoutService.get_list_payouts()

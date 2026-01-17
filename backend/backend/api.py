@@ -2,6 +2,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from ninja import NinjaAPI
 from ninja.errors import ValidationError
+
 from api_payouts.api import router as api_app_payment_router
 
 
