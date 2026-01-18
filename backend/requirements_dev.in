@@ -2,3 +2,4 @@ pip-tools
 django-debug-toolbar
 pytest
 pytest-django
+pytest-cov

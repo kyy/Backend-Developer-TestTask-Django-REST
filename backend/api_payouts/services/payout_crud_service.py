@@ -3,7 +3,6 @@ from ..models import Payout
 from ..schemas import PayoutCreateSchema, PayoutUpdateSchema
 
 
-
 class PayoutCRUDService:
     """Сервис для работы с выплатами CRUD"""
 

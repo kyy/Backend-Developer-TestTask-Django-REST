@@ -30,6 +30,7 @@ class PayoutManager(models.Manager):
     def get_queryset(self):
         return PayoutQuerySet(self.model, using=self._db)
 
+
     def get_payout(self, payout_id: str) -> 'Payout':
         return self.get_queryset().get_by_id(payout_id)
 
@@ -38,7 +39,7 @@ class PayoutManager(models.Manager):
         return self.create(**kwargs)
 
     def update_payout(self, payout_id: str, **kwargs) -> 'Payout':
-        payout = self.get_payout(payout_id)
+        payout = self.get_queryset().get_by_id(payout_id)
         for key, value in kwargs.items():
             if hasattr(payout, key):
                 setattr(payout, key, value)
@@ -46,7 +47,7 @@ class PayoutManager(models.Manager):
         return payout
 
     def delete_payout(self, payout_id: str) -> None:
-        payout = self.get_payout(payout_id)
+        payout = self.get_queryset().get_by_id(payout_id)
         payout.delete()
 
 class Payout(models.Model):
