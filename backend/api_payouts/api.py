@@ -25,7 +25,7 @@ def get_payout(request, payout_id: str):
 def create_payout(request, payload: PayoutCreateSchema):
     """Создание заявки"""
     payout = PayoutService.create_payout(payload=payload)
-    PayoutService.execute_payout(str(payout.id))
+    PayoutService.execute_payout(str(payout.id), countdown=5)
     return payout
 
 

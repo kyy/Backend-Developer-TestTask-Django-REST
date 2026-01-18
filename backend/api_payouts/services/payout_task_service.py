@@ -9,5 +9,6 @@ class PayoutTaskService:
     @staticmethod
     def execute_payout(payout_id: str, countdown=1) -> Dict[str, Any]:
         """Фоновая обработка выплаты - запуск"""
-        return transaction.on_commit(lambda: payout_task.apply_async(args=[payout_id], countdown=countdown))
+        transaction.on_commit(lambda: payout_task.apply_async(args=[payout_id], countdown=countdown))
+        return {'message': 'payout_task executed successfully!'}
 
